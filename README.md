@@ -1,4 +1,4 @@
-# ProxerDownloader_2.0.0
+# ProxerDownloader 2.0.0
 
 ProxerDownloader by Akarui Iroai
 
