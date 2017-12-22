@@ -198,7 +198,7 @@ public class Frame extends JFrame {
 	
 			File icon = new File(iconPath);
 			if (!icon.exists()) {
-				FileDownloaderNEW fd = new FileDownloaderNEW();
+				IconDownloader fd = new IconDownloader();
 				indexPath.mkdirs();
 				try {
 					fd.download("http://brecher.be/files/res/icon/ic_launcher.png", iconPath, false, false);
@@ -214,7 +214,7 @@ public class Frame extends JFrame {
 			
 			File icon = new File(iconPath);
 			if (!icon.exists()) {
-				FileDownloaderNEW fd = new FileDownloaderNEW();
+				IconDownloader fd = new IconDownloader();
 				indexPath.mkdirs();
 				try {
 					fd.download("http://brecher.be/files/res/icon/ic_launcher.png", iconPath, true, false);
