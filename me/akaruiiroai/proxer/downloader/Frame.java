@@ -108,7 +108,7 @@ public class Frame extends JFrame {
 						g.getHtmlInfo(url, proxyEnabled, proxyIP, proxyPort);
 
 					} catch (NotAProxerLinkException e) {
-						lblName.setText("Das ist keine Proxer URL!");
+						lblName.setText("This is not a Proxer link!");
 					}
 					// Disable any further clicking of buttons
 					button.setEnabled(false);
