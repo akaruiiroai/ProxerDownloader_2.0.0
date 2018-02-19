@@ -1,7 +1,21 @@
 package me.akaruiiroai.proxer.downloader;
 
 import java.awt.Font;
+import java.awt.event.WindowEvent;
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.FileReader;
+import java.io.IOException;
+import java.io.UnsupportedEncodingException;
+import java.net.URLDecoder;
+import java.nio.file.CopyOption;
+import java.nio.file.Files;
+import java.util.ArrayList;
+
+import static java.nio.file.StandardCopyOption.*;
+
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
@@ -29,14 +43,15 @@ public class Frame extends JFrame {
 	public static int fileSize = 0;
 	public static boolean updateNameFailed = false;
 	public boolean multDown = false, multDownPrev = false;
-	public static boolean proxyEnabled = false;
-	public static String proxyIP;
-	public static int proxyPort;
 	public static boolean urlValid = false;
 	public static String rawHTML;
 	public static String iframeURL;
 	public static boolean captchaSolve;
 	public static boolean noepisode;
+	public static String pdLocation;
+	public static String proxyIP = null, proxyPort = null;
+	public static boolean proxyEnabled = false;
+	public static ImageIcon gIcon;
 
 	// Anime Info
 	public static String titel = "Not Set";
@@ -48,23 +63,22 @@ public class Frame extends JFrame {
 	JFrame frame;
 	static JTextField textField = new JTextField();
 	static JTextField textField_1 = new JTextField();
-	JLabel lblProxermeDownloaderBy = new JLabel("Proxer.me Downloader von AkaruiKage");
-	JLabel lblEnterProxerUrl = new JLabel("Hier Proxer URL eingeben:");
-	static JButton btnDownload = new JButton("Runterladen");
-	JLabel lblSaveTo = new JLabel("Speichern in:");
+	JLabel lblProxermeDownloaderBy = new JLabel("Proxer.me Downloader by AkaruiKage");
+	JLabel lblEnterProxerUrl = new JLabel("Paste proxer URL here:");
+	static JButton btnDownload = new JButton("Download");
+	JLabel lblSaveTo = new JLabel("Save to:");
 	static JProgressBar progressBar = new JProgressBar();
-	JButton btnApply = new JButton("Anwenden");
-	public static JLabel lblName = new JLabel("Animename wird hier angezeigt");
+	JButton btnApply = new JButton("OK");
+	public static JLabel lblName = new JLabel("Anime name will be displayed here");
 	public static JLabel lblStatus = new JLabel("");
-	static JCheckBox chckbxDownloadAllEpisodes = new JCheckBox("Alle Episoden runterladen");
+	static JCheckBox chckbxDownloadAllEpisodes = new JCheckBox("Download all episodes");
 	JLabel lblNext = new JLabel("");
 	JLabel lblPrev = new JLabel("");
 	static JButton button = new JButton(">");
 	static JButton button_1 = new JButton("<");
-	JLabel proxyInfo = new JLabel("Proxyeinstellungen(leer, falls nicht vorhanden)");
-	static JTextField proxyipfield = new JTextField();
-	static JTextField proxyportfield = new JTextField();
-	JButton chooseSaveDir = new JButton("Auswählen");
+	static JButton proxySettings = new JButton("Proxy Settings");
+	
+	JButton chooseSaveDir = new JButton("Select");
 	static JLabel prozent = new JLabel();
 
 	// Runnables and Threads
@@ -90,13 +104,6 @@ public class Frame extends JFrame {
 				if (url.equals(lastUrl)) {
 
 				} else {
-					if (!Frame.proxyipfield.getText().equals("") || !Frame.proxyportfield.getText().equals("")) {
-						Frame.proxyEnabled = true;
-						Frame.proxyIP = Frame.proxyipfield.getText();
-						Frame.proxyPort = Integer.parseInt(Frame.proxyportfield.getText());
-						} else {
-						Frame.proxyEnabled = false;
-					}
 					try {
 						g.getHtmlInfo(url, proxyEnabled, proxyIP, proxyPort);
 
@@ -171,9 +178,87 @@ public class Frame extends JFrame {
 
 	public void create() {
 		setTitle("Proxer.me Downloader");
-		update.start();
+		
 		setDefaultCloseOperation(EXIT_ON_CLOSE);
 		setEnabled(true);
+		String pdClassLocation = Frame.class.getProtectionDomain().getCodeSource().getLocation().getPath();
+		System.out.println(pdClassLocation);
+		System.out.println(pdClassLocation);
+		if(pdClassLocation.contains("/src/java/executable/pd.jar")) pdLocation = pdClassLocation.substring(0, pdClassLocation.length()-26); else pdLocation = pdClassLocation;
+		File settingsFile = new File(pdLocation, "settings.conf");
+		if(!settingsFile.exists()) {
+			try {
+				FileOutputStream fos = new FileOutputStream(settingsFile);
+				fos.write("//Proxy Settings\n".getBytes());
+				fos.write("proxyEnabled: false\n".getBytes());
+				fos.write("proxyIP: \n".getBytes());
+				fos.write("proxyPort: \n".getBytes());
+				fos.close();
+			} catch(IOException ioe) {
+				ioe.printStackTrace();
+			}
+			proxyEnabled = false;
+			proxyIP = null;
+			proxyPort = null;
+		} else {
+			BufferedReader br = null;
+			String rawSettings = "";
+			try {
+				br = new BufferedReader(new FileReader(settingsFile));
+				StringBuilder sb = new StringBuilder();
+				String currentLine;
+				while((currentLine = br.readLine()) != null) {
+					if(!currentLine.startsWith("//")) {
+						sb.append(currentLine);
+						sb.append(";");
+					}
+					
+				}
+				rawSettings = sb.toString();
+			} catch (IOException ioe) {
+				ioe.printStackTrace();
+			} finally {
+				if(br != null) {
+					try {
+						br.close();
+					} catch (IOException e) {
+						e.printStackTrace();
+					}
+				}
+				
+			}
+			
+			System.out.println(rawSettings);
+			String sett1 = rawSettings.replaceAll("\\s", "");
+			System.out.println(sett1);
+			ArrayList<String> settList1 = new ArrayList<>();
+			for(String s : sett1.split(";")) {
+				settList1.add(s);
+			}
+			ArrayList<String> settList2 = new ArrayList<>();
+			for(String s : settList1) {
+				settList2.add((s.replaceAll("\\S+\\:", "").replaceAll(";", "")));
+			}
+			if(settList2.get(0).equals("false")||settList2.get(0).equals("true")) {
+				if(settList2.get(0).equals("false")) {
+					proxyEnabled = false;
+				} else {
+					proxyEnabled = true;
+				}
+			}
+			if(!settList2.get(1).isEmpty()) {
+				proxyIP = settList2.get(1);
+			}
+			if(!settList2.get(2).isEmpty()) {
+				proxyPort = settList2.get(2);
+			}
+			System.out.println("Proxy Enabled: " + proxyEnabled);
+			System.out.println("Proxy IP: " + proxyIP);
+			System.out.println("Proxy Port: " + proxyPort);
+			
+			
+		}
+		System.out.println(pdLocation);
 		try {
 			UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
 		} catch (ClassNotFoundException e1) {
@@ -198,15 +283,26 @@ public class Frame extends JFrame {
 	
 			File icon = new File(iconPath);
 			if (!icon.exists()) {
-				IconDownloader fd = new IconDownloader();
-				indexPath.mkdirs();
+				String path = Frame.class.getProtectionDomain().getCodeSource().getLocation().getPath();
+				File pathToIcon;
 				try {
-					fd.download("http://brecher.be/files/res/icon/ic_launcher.png", iconPath, false, false);
-				} catch (Exception e) {
+					String decodedPath = URLDecoder.decode(path, "UTF-8");
+					pathToIcon = new File(decodedPath, "ic_launcher.png");
+				} catch (UnsupportedEncodingException e) {
 					e.printStackTrace();
+					pathToIcon = new File(path, "ic_launcher.png");
 				}
+				if(pathToIcon != null) {
+					try {
+						Files.copy(pathToIcon.toPath(), icon.toPath(), REPLACE_EXISTING);
+					} catch (IOException e) {
+						e.printStackTrace();
+					}
+				}
+				
 			}
 			ImageIcon imgicon = new ImageIcon(iconPath);
+			gIcon = imgicon;
 			setIconImage(imgicon.getImage());
 		} else if (System.getProperty("os.name").equals("Linux")) {
 			String iconPath = System.getProperty("user.home") + "/ProxerDownloader/ic_launcher.png";
@@ -214,16 +310,25 @@ public class Frame extends JFrame {
 			
 			File icon = new File(iconPath);
 			if (!icon.exists()) {
-				IconDownloader fd = new IconDownloader();
-				indexPath.mkdirs();
+				String path = Frame.class.getProtectionDomain().getCodeSource().getLocation().getPath();
+				File pathToIcon;
 				try {
-					fd.download("http://brecher.be/files/res/icon/ic_launcher.png", iconPath, true, false);
-				} catch (Exception e) {
-
+					String decodedPath = URLDecoder.decode(path, "UTF-8");
+					pathToIcon = new File(decodedPath, "ic_launcher.png");
+				} catch (UnsupportedEncodingException e) {
 					e.printStackTrace();
+					pathToIcon = new File(path, "ic_launcher.png");
+				}
+				if(pathToIcon != null) {
+					try {
+						Files.copy(pathToIcon.toPath(), icon.toPath(), REPLACE_EXISTING);
+					} catch (IOException e) {
+						e.printStackTrace();
+					}
 				}
 			}
 			ImageIcon imgicon = new ImageIcon(iconPath);
+			gIcon = imgicon;
 			setIconImage(imgicon.getImage());
 		}
 
@@ -257,13 +362,7 @@ public class Frame extends JFrame {
 		progressBar.setValue(0);
 		progressBar.setBounds(123, 194, 190, 14);
 		getContentPane().add(progressBar);
-		proxyInfo.setHorizontalAlignment(SwingConstants.CENTER);
-		proxyInfo.setBounds(20, 280, 390, 20);
-		getContentPane().add(proxyInfo);
-		proxyipfield.setBounds(100, 300, 170, 20);
-		getContentPane().add(proxyipfield);
-		proxyportfield.setBounds(290, 300, 50, 20);
-		getContentPane().add(proxyportfield);
+		
 		lblName.setHorizontalAlignment(SwingConstants.CENTER);
 		lblName.setFont(new Font("Arial", Font.PLAIN, 16));
 		lblName.setBounds(10, 94, 414, 43);
@@ -285,6 +384,11 @@ public class Frame extends JFrame {
 		button_1.setBounds(34, 156, 45, 23);
 		button_1.addActionListener(new PrevListener());
 		getContentPane().add(button_1);
+		proxySettings.setBounds(140, 290, 160, 20);
+		proxySettings.addActionListener(new ProxySettingsListener());
+		getContentPane().add(proxySettings);
+		
+		
 		String home = System.getProperty("user.home");
 		String[] s;
 		StringBuilder sb = new StringBuilder();
@@ -294,6 +398,9 @@ public class Frame extends JFrame {
 		}
 		textField_1.setText(sb.toString() + "Downloads/Proxer");
 		setVisible(true);
+		if(!update.isAlive()) {
+			update.start();
+		}
 	}
 
 	public void reEnableNextPrevBNTS() {
@@ -312,5 +419,9 @@ public class Frame extends JFrame {
 
 	public static int prozent(float value, float max) {
 		return (int) ((value / max) * 100);
+	}
+	
+	public void close() {
+		dispatchEvent(new WindowEvent(this, WindowEvent.WINDOW_CLOSING));
 	}
 }
